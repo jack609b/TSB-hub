@@ -1,24 +1,39 @@
 -- Tải OrionLib
-local OrionLib = loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+local success, OrionLib = pcall(function()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/shlexware/Orion/main/source"))()
+end)
 
--- Lấy thông tin người chơi và nhân vật
+if not success then
+    warn("Không thể tải OrionLib.")
+    return
+end
+
+-- Khởi tạo người chơi và nhân vật
 local lp = game.Players.LocalPlayer
 local char = lp.Character or lp.CharacterAdded:Wait()
 local hum = char:WaitForChild("Humanoid")
 local hrp = char:WaitForChild("HumanoidRootPart")
 
--- Trạng thái các tính năng
+-- Trạng thái
 local autoHeal = false
-local resetSpeed = false
+local speedEnabled = false
 local invisibilityEnabled = false
 local alreadyInvisible = false
 
--- Tạo GUI OrionLib
+-- Hàm cập nhật nhân vật khi reset
+local function updateCharacter(newChar)
+    char = newChar
+    hum = char:WaitForChild("Humanoid")
+    hrp = char:WaitForChild("HumanoidRootPart")
+    alreadyInvisible = false
+end
+
+-- GUI OrionLib
 local Window = OrionLib:MakeWindow({
-    Name = "Dead Rails-hub | By: Minh",
+    Name = "TSB-hub | By: Minh",
     HidePremium = false,
-    SaveConfig = false,
-    ConfigFolder = "DeadRailsHub"
+    SaveConfig = true,
+    ConfigFolder = "TSBHub"
 })
 
 local MainTab = Window:MakeTab({
@@ -27,7 +42,6 @@ local MainTab = Window:MakeTab({
     PremiumOnly = false
 })
 
--- Nút: Tự hồi máu
 MainTab:AddToggle({
     Name = "Tự Hồi Máu",
     Default = false,
@@ -36,16 +50,14 @@ MainTab:AddToggle({
     end
 })
 
--- Nút: Tăng tốc độ
 MainTab:AddToggle({
-    Name = "Chỉnh Speed (100)",
+    Name = "Tăng Tốc Độ",
     Default = false,
     Callback = function(state)
-        resetSpeed = state
+        speedEnabled = state
     end
 })
 
--- Nút: Tàng hình
 MainTab:AddToggle({
     Name = "Tàng Hình",
     Default = false,
@@ -54,42 +66,63 @@ MainTab:AddToggle({
     end
 })
 
--- Theo dõi nhân vật mới khi reset
-lp.CharacterAdded:Connect(function(newChar)
-    char = newChar
-    hum = char:WaitForChild("Humanoid")
-    hrp = char:WaitForChild("HumanoidRootPart")
-    alreadyInvisible = false
-end)
+-- Theo dõi khi người chơi reset
+lp.CharacterAdded:Connect(updateCharacter)
 
--- Vòng lặp chính
+-- Vòng lặp tính năng
 game:GetService("RunService").Heartbeat:Connect(function()
     if not char or not hum or not hrp then return end
 
-    -- Tự hồi máu
-    if autoHeal and hum.Health < hum.MaxHealth then
-        hum.Health = hum.MaxHealth
+    -- Hồi máu
+    if autoHeal then
+        if hum.Health < hum.MaxHealth then
+            hum.Health = hum.MaxHealth
+        end
     end
 
-    -- Reset Speed
-	if resetSpeed then
-		if hum.WalkSpeed ~= 16 then
-			hum.WalkSpeed = 100
-		end
-	end
+    -- Tốc độ: Luôn là 100 nếu bật
+    if speedEnabled and hum.WalkSpeed ~= 100 then
+        hum.WalkSpeed = 100
+    end
 
-    -- Tàng hình
+    -- Tàng hình hoàn hảo
     if invisibilityEnabled and not alreadyInvisible then
-        for _, part in pairs(char:GetDescendants()) do
+        -- Ẩn tất cả bộ phận cơ thể
+        for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.LocalTransparencyModifier = 1
+                part.Transparency = 1
+                if part:FindFirstChildOfClass("Decal") then
+                    part:FindFirstChildOfClass("Decal").Transparency = 1
+                end
+            end
+        end
+        -- Ẩn tên (BillboardGui)
+        local head = char:FindFirstChild("Head")
+        if head then
+            for _, gui in ipairs(head:GetChildren()) do
+                if gui:IsA("BillboardGui") then
+                    gui.Enabled = false
+                end
             end
         end
         alreadyInvisible = true
     elseif not invisibilityEnabled and alreadyInvisible then
-        for _, part in pairs(char:GetDescendants()) do
+        for _, part in ipairs(char:GetDescendants()) do
             if part:IsA("BasePart") then
                 part.LocalTransparencyModifier = 0
+                part.Transparency = 0
+                if part:FindFirstChildOfClass("Decal") then
+                    part:FindFirstChildOfClass("Decal").Transparency = 0
+                end
+            end
+        end
+        local head = char:FindFirstChild("Head")
+        if head then
+            for _, gui in ipairs(head:GetChildren()) do
+                if gui:IsA("BillboardGui") then
+                    gui.Enabled = true
+                end
             end
         end
         alreadyInvisible = false
