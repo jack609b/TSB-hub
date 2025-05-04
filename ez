@@ -23,24 +23,25 @@ if not success then
     return
 end
 
--- Khởi tạo người chơi và nhân vật
+-- Khởi tạo
 local char = lp.Character or lp.CharacterAdded:Wait()
 local hum = char:WaitForChild("Humanoid")
 local hrp = char:WaitForChild("HumanoidRootPart")
 
--- Trạng thái
 local autoHeal = false
 local speedEnabled = false
 local invisibilityEnabled = false
 local alreadyInvisible = false
 
--- Hàm cập nhật nhân vật khi reset
+-- Hàm cập nhật khi reset nhân vật
 local function updateCharacter(newChar)
     char = newChar
     hum = char:WaitForChild("Humanoid")
     hrp = char:WaitForChild("HumanoidRootPart")
     alreadyInvisible = false
 end
+
+lp.CharacterAdded:Connect(updateCharacter)
 
 -- GUI OrionLib
 local Window = OrionLib:MakeWindow({
@@ -59,55 +60,49 @@ local MainTab = Window:MakeTab({
 MainTab:AddToggle({
     Name = "Tự Hồi Máu",
     Default = false,
-    Callback = function(state)
-        autoHeal = state
-    end
+    Callback = function(state) autoHeal = state end
 })
 
 MainTab:AddToggle({
     Name = "Tăng Tốc Độ",
     Default = false,
-    Callback = function(state)
-        speedEnabled = state
-    end
+    Callback = function(state) speedEnabled = state end
 })
 
 MainTab:AddToggle({
     Name = "Tàng Hình",
     Default = false,
-    Callback = function(state)
-        invisibilityEnabled = state
-    end
+    Callback = function(state) invisibilityEnabled = state end
 })
 
--- Theo dõi khi người chơi reset
-lp.CharacterAdded:Connect(updateCharacter)
-
--- Vòng lặp tính năng
+-- Vòng lặp chính
 game:GetService("RunService").Heartbeat:Connect(function()
     if not char or not hum or not hrp then return end
 
-    -- Hồi máu
+    -- Tự hồi máu
     if autoHeal and hum.Health < hum.MaxHealth then
         hum.Health = hum.MaxHealth
     end
 
-    -- Tốc độ: Luôn là 100 nếu bật
+    -- Tốc độ chạy
     if speedEnabled and hum.WalkSpeed ~= 100 then
         hum.WalkSpeed = 100
     end
 
     -- Tàng hình hoàn hảo
     if invisibilityEnabled and not alreadyInvisible then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.LocalTransparencyModifier = 1
-                part.Transparency = 1
-                if part:FindFirstChildOfClass("Decal") then
-                    part:FindFirstChildOfClass("Decal").Transparency = 1
-                end
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.LocalTransparencyModifier = 1
+                v.Transparency = 1
+                v.CanCollide = false
+            elseif v:IsA("Decal") then
+                v.Transparency = 1
+            elseif v:IsA("BillboardGui") or v:IsA("SurfaceGui") then
+                v.Enabled = false
             end
         end
+        -- Ẩn tên
         local head = char:FindFirstChild("Head")
         if head then
             for _, gui in ipairs(head:GetChildren()) do
@@ -118,26 +113,19 @@ game:GetService("RunService").Heartbeat:Connect(function()
         end
         alreadyInvisible = true
     elseif not invisibilityEnabled and alreadyInvisible then
-        for _, part in ipairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.LocalTransparencyModifier = 0
-                part.Transparency = 0
-                if part:FindFirstChildOfClass("Decal") then
-                    part:FindFirstChildOfClass("Decal").Transparency = 0
-                end
-            end
-        end
-        local head = char:FindFirstChild("Head")
-        if head then
-            for _, gui in ipairs(head:GetChildren()) do
-                if gui:IsA("BillboardGui") then
-                    gui.Enabled = true
-                end
+        for _, v in pairs(char:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.LocalTransparencyModifier = 0
+                v.Transparency = 0
+                v.CanCollide = true
+            elseif v:IsA("Decal") then
+                v.Transparency = 0
+            elseif v:IsA("BillboardGui") or v:IsA("SurfaceGui") then
+                v.Enabled = true
             end
         end
         alreadyInvisible = false
     end
 end)
 
--- Khởi động GUI
 OrionLib:Init()
